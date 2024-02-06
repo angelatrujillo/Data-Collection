@@ -1,0 +1,182 @@
+<br> 
+<center><img src="http://i.imgur.com/sSaOozN.png" width="500"></center>
+
+# Data Collection in R
+
+## Course: Computational Thinking for Governance Analytics<br> Winter 2017<br> 
+
+### Prof. José Manuel Magallanes, PhD 
+<a id='beginning'></a>
+
+This unit pays attention to get data. In this situation you can be confronted with a decision to collect data from repositories or similar source, or collect your own data to answer an ad-hoc research question. The latter case will make you consider if you need a probabilistic or non-probabilistic design; which will also determine the next steps in your design.
+In any case, you need to collect data to be read by R or Python, unless your data is not suitable for any kind of computational data processing. But in this unit, I am assuming it is. If you have collected your data, a popular choice to record your observations is an spreadsheet, maybe using Excel or GoogleDocs. If you have collected data from another party, you may also have spreadsheets, or more sophisticated files in particular formats, like SPSS or STATA. Maybe you decided to collect data from the web, and you may be dealing with XML or JSON formats; or simply text without much structure. Let me show you how to deal with the following cases:
+
+1. [Propietary software.](#part1) 
+2. [Ad-hoc collection.](#part2) 
+3. [Use of APIs.](#part3) 
+4. [Scraping webpages.](#part4) 
+
+Remember that the location of your files is extremely important. If you have created a folder name "my project", your code should be in that folder, which I call sometimes the root folder,  and your data in another folder inside that root folder. In any case, you should become familiar with some important commands in R:
+```{r, eval=FALSE}
+# # where am I?
+getwd()
+```
+The command above gave you your current location, if it is not what you expected, you can change it with another command:
+```{r, eval=FALSE}
+setwd()
+```
+You have to include the path to the folder you want between the parenthesis.
+
+Becareful, you need to follow a similar pattern than the one obtained with getwd(); that is, see if the folders in the path are using \, \\, /, // to separate the folders. This difference depends on the type of computer you have. Remember that a path has to be written as a string, that is, in between '' or "".
+You need to change your root folder location once, if needed; but you do not use ch.dir() again for every file you read. If the file is in a folder inside your root folder, you simply write:
+
+```{r, eval=FALSE}
+library(rio)
+folder="data"
+fileName="anes_timeseries_2012.sav"
+fileToRead=file.path(folder,fileName)
+fileToRead
+```
+
+The object _fileToRead_ has the right name of the path, because **file.path** creates a path using the elements between the parenthesis. Notice that you can write several folders, and file.path creates the right separator.
+
+
+
+____
+
+
+<a id='part1'></a>
+
+## Collecting data from proprietary software
+
+Let's start with data from SPSS and STATA, very common in public policy schools. To work with these kind of files, we will use the package **rio**:
+```{r, eval=FALSE}
+#install.packages("haven")
+library(rio)
+```
+Let me open the SPSS file first, these data come from the American National Election Studies survey (ANES):
+```{r, eval=FALSE}
+folder="data"
+fileName="anes_timeseries_2012.sav"
+fileToRead=file.path(folder,fileName)
+dataSpss=import(fileToRead)
+```
+
+
+This is a rather big file, so let me select some variables ("libcpre_self","libcpo_self"), a couple of questions pre and post elections asking respondents to place themselves on a seven point scale ranging from ‘extremely liberal’ to ‘extremely conservative’) and create a data frame with them: 
+```{r, eval=FALSE}
+varsOfInterest=c("libcpre_self","libcpo_self")
+dataSpssSub=as.data.frame(dataSpss)[varsOfInterest]
+head(dataSpssSub)
+```
+
+A similar process is followed to get a STATA file:
+```{r, eval=FALSE}
+fileName="anes_timeseries_2012.dta"
+fileToRead=file.path(folder,fileName)
+dataStata=import(fileToRead)
+dataStataSub=as.data.frame(dataStata)[varsOfInterest]
+head(dataStataSub)
+```
+
+```{r, eval=FALSE}
+fileName="HDI.xlsx"
+fileToRead=file.path(folder,fileName)
+dataExcel=import(fileToRead)
+```
+
+[Go to page beginning](#beginning)
+
+----
+
+<a id='part2'></a>
+
+## Collecting your ad-hoc data
+
+Let me assume you have collected some data using Google Forms. The answers to your forms are saved in an spreadsheet, which you should publish as a CSV file. Then, I can read it like this:
+```{r, eval=FALSE}
+
+
+# obtained from google docs:
+link='https://docs.google.com/spreadsheets/d/e/2PACX-1vRCHCDPx4NmYA5phchO2rZhZSPvHZjkF08E11i3gsjHCy4zVWc12IRGg8rMzDgpvIHCZQqGeqPFhWa6/pub?gid=692075096&single=true&output=csv'
+
+fromGoogle = read.csv(link)
+
+
+head(fromGoogle)
+
+```
+
+[Go to page beginning](#beginning)
+
+-----
+
+<a id='part3'></a>
+
+## Collecting data from APIs
+
+There are organizations, public and private, that have an open data policy that allows people to access their repositories dynamically. You can get that data in CSV format if available, but the data is always in  XML or JSON format, which are data containers that store data in an *associative array* structure. R could open that data using lists, but we will transform it into a data frame. Let me get the data about 9-1-1 Police reponses from Seattle:
+```{r, eval=FALSE}
+#install.packages("jsonlite")
+library(jsonlite) 
+endPoint="https://data.seattle.gov/resource/kzjm-xkqj.json" 
+data911 = fromJSON(endPoint)
+head(data911)
+
+
+## Install the required package with:
+## install.packages("RSocrata")
+
+library("RSocrata")
+
+df <- read.socrata(
+  "https://data.seattle.gov/resource/kzjm-xkqj.csv?%24limit=2000"
+)
+```
+[Go to page beginning](#beginning)
+
+-----
+<a id='part4'></a>
+
+## Collecting data by scraping
+
+We are going to get the data from a table from this [wikipage](https://en.wikipedia.org/wiki/List_of_freedom_indices)
+
+```{r, eval=FALSE}
+# Install: XML, RCurl
+# Activate
+library(XML)
+library(RCurl)
+
+# URL
+wiki="https://en.wikipedia.org/wiki/" 
+link = "List_of_freedom_indices" 
+
+# Data
+wikiLinkContents = getURL(paste0(wiki,link)) 
+wikiTables = readHTMLTable(wikiLinkContents,header = T,
+                           stringsAsFactors=FALSE)
+```
+Let's see what we have:
+
+```{r, eval=FALSE}
+#data frame:
+is.data.frame(wikiTables)
+#list:
+is.list(wikiTables)
+# how many?
+length(wikiTables)
+```
+When visiting the wikipage, you can see that the indices are in the third table, then:
+```{r, eval=FALSE}
+idx=wikiTables[[3]]
+str(idx)
+```
+We had a list of data frames, and we kept the third one:
+```{r, eval=FALSE}
+head(idx)
+```
+
+### Homework: 
+
+Convert your data into a data frame. Make sure the commandas head() or tail() work.
